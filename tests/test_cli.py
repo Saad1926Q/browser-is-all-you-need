@@ -1021,3 +1021,27 @@ def test_cli_osworld_custom_smoke_uses_harness(monkeypatch):
     assert result.exit_code == 0, result.output
     assert "episodes: 1/1" in result.output
     assert "OK    vscode/" in result.output
+
+def test_cli_osworld_custom_dart_prepare_exports_task(tmp_path):
+    out = tmp_path / "dart"
+    result = CliRunner().invoke(
+        app,
+        [
+            "osworld",
+            "custom",
+            "dart",
+            "prepare",
+            "src/w8_biayn/osworld_custom/tasks/add_todo_comment",
+            "--out",
+            str(out),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "exported 1 task(s) for DART-GUI" in result.output
+    assert (out / "evaluation_examples" / "custom_train.json").exists()
+    taskset = json.loads((out / "evaluation_examples" / "custom_train.json").read_text(encoding="utf-8"))
+    task_id = taskset["custom"][0]
+    assert (out / "evaluation_examples" / "examples_custom" / "custom" / f"{task_id}.json").exists()
+    assert (out / "manifest.json").exists()
+

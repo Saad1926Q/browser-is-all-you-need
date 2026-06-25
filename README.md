@@ -129,6 +129,21 @@ uv run w8-biayn upstreams status
 
 The pinned checkout lands at `.cache/upstreams/dart-gui/`. Its `dart_rollouter` submodule is initialized by the standard upstream clone command, so DART's OSWorld rollout/training scripts remain reproducible without vendoring the DART source into this repo.
 
+Export custom tasks into DART's `task_file` plus `osworld_root` layout before rollout/training:
+
+```bash
+RUN_ID="dart-smoke"
+uv run w8-biayn osworld custom dart prepare \
+  --limit 5 \
+  --out ".w8-biayn/osworld-dart/data/${RUN_ID}"
+```
+
+The exporter writes:
+
+- `.w8-biayn/osworld-dart/data/${RUN_ID}/evaluation_examples/custom_train.json` for DART `task.task_file`
+- `.w8-biayn/osworld-dart/data/${RUN_ID}/evaluation_examples/examples_custom/` for DART `task.osworld_root`
+- `.w8-biayn/osworld-dart/data/${RUN_ID}/manifest.json` for reproducibility
+
 ## Local ScaleCUA SFT + MLflow
 
 Local ScaleCUA LoRA SFT can report to W&B, MLflow, or both through Hugging Face Trainer callbacks. Install the SFT extra so the local environment includes `mlflow` as well as the vision/training stack.

@@ -93,6 +93,7 @@ ops_app = typer.Typer(help="Inspect and manage cloud runs without calling the ba
 eval_app = typer.Typer(help="Aggregate C++ performance-RL evaluation outputs.")
 osworld_app = typer.Typer(help="Validate and run OSWorld desktop tasks from the upstream clone.")
 osworld_custom_app = typer.Typer(help="Manage custom OSWorld-style tasks stored in this repo.")
+osworld_custom_dart_app = typer.Typer(help="Prepare custom OSWorld tasks for DART-GUI RL.")
 scalecua_app = typer.Typer(help="Run ScaleCUA OSWorld SFT pipeline steps.")
 
 app.add_typer(upstreams_app, name="upstreams")
@@ -103,6 +104,7 @@ data_app.add_typer(data_skyrl_app, name="skyrl")
 data_app.add_typer(data_cache_app, name="cache")
 app.add_typer(osworld_app, name="osworld")
 osworld_app.add_typer(osworld_custom_app, name="custom")
+osworld_custom_app.add_typer(osworld_custom_dart_app, name="dart")
 app.add_typer(scalecua_app, name="scalecua")
 app.add_typer(cpp_app, name="cpp")
 cpp_app.add_typer(task_app, name="task")
@@ -1329,6 +1331,61 @@ def osworld_custom_validate(
         console.print(custom_validate.format_report(report))
     if not report.ok:
         raise typer.Exit(1)
+
+
+@osworld_custom_dart_app.command("prepare")
+def osworld_custom_dart_prepare(
+    targets: list[str] = typer.Argument(None, help="Task directories or task.json paths. Omit with --taskset to use a taskset."),
+    taskset: Optional[str] = typer.Option(None, help="Optional JSON taskset path to export."),
+    out: str = typer.Option(..., "--out", help="Output directory for DART evaluation_examples and manifest."),
+    task_type: str = typer.Option("custom", help="DART task_type/domain name used in the task_file mapping."),
+    limit: Optional[int] = typer.Option(None, help="Maximum number of selected tasks to export."),
+    force: bool = typer.Option(False, "--force", help="Allow writing into a non-empty output directory."),
+    skip_validation: bool = typer.Option(False, "--skip-validation", help="Skip deterministic custom-task validation before export."),
+    allow_proxy: bool = typer.Option(False, "--allow-proxy", help="Allow tasks with proxy=true during validation."),
+    allow_network: bool = typer.Option(False, "--allow-network", help="Allow non-proxy tasks to contain network URLs during validation."),
+    json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON instead of a summary."),
+) -> None:
+    """Export custom OSWorld tasks into DART-GUI task_file/osworld_root layout."""
+    from .osworld_custom import registry
+    from .osworld_custom import validate as custom_validate
+    from .osworld_dart.tasks import export_custom_tasks
+
+    if taskset:
+        tasks = registry.load_taskset(taskset)
+    elif targets:
+        tasks = [registry.load_task(target) for target in targets]
+    else:
+        tasks = registry.iter_custom_tasks()
+
+    if limit is not None:
+        tasks = tasks[:limit]
+
+    if not skip_validation:
+        report = custom_validate.validate_tasks(tasks, allow_proxy=allow_proxy, strict_network=not allow_network)
+        if not report.ok:
+            if json_output:
+                console.print_json(data=report.as_dict())
+            else:
+                console.print(custom_validate.format_report(report))
+            raise typer.Exit(1)
+
+    try:
+        result = export_custom_tasks(tasks, Path(out), task_type=task_type, force=force)
+    except (FileExistsError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    if json_output:
+        console.print_json(data=result.as_dict())
+        return
+
+    console.print(f"exported {result.task_count} task(s) for DART-GUI")
+    console.print(f"task_file: {result.task_file}")
+    console.print(f"osworld_root: {result.osworld_root}")
+    console.print(f"manifest: {result.manifest_path}")
+    console.print("DART config values:")
+    console.print(f"  task.task_file={result.task_file}")
+    console.print(f"  task.osworld_root={result.osworld_root}")
 
 
 @osworld_custom_app.command("smoke")
