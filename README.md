@@ -118,6 +118,17 @@ uv run w8-biayn osworld custom smoke src/w8_biayn/osworld_custom/tasks/add_todo_
 
 `validate` checks the task schema and evaluator contract, while `smoke` runs the task through DesktopEnv and saves artifacts under `.w8-biayn/osworld-custom/`.
 
+### Optional DART-GUI RL Backend
+
+DART-GUI is tracked as an optional pinned upstream for future OSWorld-custom RL training. It is not part of the default C++ or OSWorld benchmark path. Use it as a sidecar backend for GUI-agent RL experiments: this repo will own custom-task conversion, config rendering, launch/status wrappers, and metrics; DART keeps its own rollouter, MySQL data manager, and modified veRL trainer.
+
+```bash
+uv run w8-biayn upstreams clone dart-gui
+uv run w8-biayn upstreams status
+```
+
+The pinned checkout lands at `.cache/upstreams/dart-gui/`. Its `dart_rollouter` submodule is initialized by the standard upstream clone command, so DART's OSWorld rollout/training scripts remain reproducible without vendoring the DART source into this repo.
+
 ## Local ScaleCUA SFT + MLflow
 
 Local ScaleCUA LoRA SFT can report to W&B, MLflow, or both through Hugging Face Trainer callbacks. Install the SFT extra so the local environment includes `mlflow` as well as the vision/training stack.
@@ -594,6 +605,8 @@ Pinned upstream clones live under `.cache/upstreams/`:
 - `rllm`
 - `pie-perf`
 - `LearningOpt-pie`
+- `OSWorld`
+- `dart-gui` for optional DART-GUI OSWorld-custom RL experiments
 
 Use:
 

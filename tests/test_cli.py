@@ -29,6 +29,15 @@ def test_cli_help_exposes_new_surface_only():
     assert "webarena" not in result.output
 
 
+def test_cli_upstreams_clone_exposes_dart_gui_pin():
+    result = CliRunner().invoke(app, ["upstreams", "clone", "dart-gui", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert "https://github.com/Computer-use-agents/dart-gui.git" in result.output
+    assert "e0e606d3082c8ebec296c4dd4b8e01ecde94edd0" in result.output
+    assert "dart-gui: .cache/upstreams/dart-gui" in result.output
+
+
 def test_cli_config_render_cpp_smoke(tmp_path):
     credentials = tmp_path / "sa.json"
     write_credentials(credentials)
