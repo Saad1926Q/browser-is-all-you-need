@@ -144,6 +144,27 @@ The exporter writes:
 - `.w8-biayn/osworld-dart/data/${RUN_ID}/evaluation_examples/examples_custom/` for DART `task.osworld_root`
 - `.w8-biayn/osworld-dart/data/${RUN_ID}/manifest.json` for reproducibility
 
+Render the first DART run directory after export. This does not start training; it writes the rollouter config, environment file, launch script, and manifest needed for the rollout smoke.
+
+```bash
+uv run w8-biayn osworld custom dart config \
+  --run-id "$RUN_ID" \
+  --task-file ".w8-biayn/osworld-dart/data/${RUN_ID}/evaluation_examples/custom_train.json" \
+  --osworld-root ".w8-biayn/osworld-dart/data/${RUN_ID}/evaluation_examples/examples_custom" \
+  --out ".w8-biayn/osworld-dart/runs/${RUN_ID}" \
+  --model Qwen/Qwen2.5-VL-7B-Instruct \
+  --rollout-server-url http://127.0.0.1:15959 \
+  --max-steps 15 \
+  --rollout-n 1
+```
+
+The config command writes:
+
+- `.w8-biayn/osworld-dart/runs/${RUN_ID}/rollouter_config.yaml` for DART `src.run`
+- `.w8-biayn/osworld-dart/runs/${RUN_ID}/env.sh` with task/model/tracking environment variables
+- `.w8-biayn/osworld-dart/runs/${RUN_ID}/run_dart_rollout.sh` as the first rollout-smoke script
+- `.w8-biayn/osworld-dart/runs/${RUN_ID}/manifest.json` for reproducibility
+
 ## Local ScaleCUA SFT + MLflow
 
 Local ScaleCUA LoRA SFT can report to W&B, MLflow, or both through Hugging Face Trainer callbacks. Install the SFT extra so the local environment includes `mlflow` as well as the vision/training stack.

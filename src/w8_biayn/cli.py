@@ -1388,6 +1388,79 @@ def osworld_custom_dart_prepare(
     console.print(f"  task.osworld_root={result.osworld_root}")
 
 
+@osworld_custom_dart_app.command("config")
+def osworld_custom_dart_config(
+    run_id: str = typer.Option(..., "--run-id", help="Run id for the generated DART run directory."),
+    task_file: str = typer.Option(..., "--task-file", help="DART task.task_file JSON produced by `dart prepare`."),
+    osworld_root: str = typer.Option(..., "--osworld-root", help="DART task.osworld_root directory produced by `dart prepare`."),
+    out: Optional[str] = typer.Option(None, "--out", help="Output directory. Defaults to .w8-biayn/osworld-dart/runs/<run-id>."),
+    dart_root: str = typer.Option(".cache/upstreams/dart-gui", help="Pinned DART-GUI checkout root."),
+    storage_root: Optional[str] = typer.Option(None, help="DART rollout storage root. Defaults under the generated run dir."),
+    model: str = typer.Option("Qwen/Qwen2.5-VL-7B-Instruct", help="Model/checkpoint path to pass through DART config."),
+    rollout_server_url: str = typer.Option("http://127.0.0.1:15959", help="DART rollout server URL."),
+    max_steps: int = typer.Option(15, help="Maximum OSWorld steps per rollout episode."),
+    rollout_n: int = typer.Option(1, help="Rollouts per task for the smoke config."),
+    max_concurrent_envs: int = typer.Option(1, help="Maximum concurrent DART environments."),
+    max_task_queue_size: int = typer.Option(1, help="DART task queue cycling count."),
+    screen_width: int = typer.Option(1920, help="Desktop screen width."),
+    screen_height: int = typer.Option(1080, help="Desktop screen height."),
+    headless: bool = typer.Option(True, "--headless/--headed", help="Run OSWorld desktops headlessly."),
+    provider_name: str = typer.Option("docker_server", help="DART/OSWorld provider name."),
+    os_type: str = typer.Option("Ubuntu", help="DART OS type field."),
+    require_a11y_tree: bool = typer.Option(False, "--require-a11y-tree/--no-a11y-tree", help="Request accessibility tree observations."),
+    write_to_mysql: bool = typer.Option(False, "--write-to-mysql/--no-write-to-mysql", help="Enable DART MySQL writes."),
+    mlflow_tracking_uri: Optional[str] = typer.Option(None, help="Optional MLflow tracking URI exported in env.sh."),
+    mlflow_experiment: Optional[str] = typer.Option(None, help="Optional MLflow experiment exported in env.sh."),
+    wandb_project: Optional[str] = typer.Option(None, help="Optional W&B project exported in env.sh."),
+    wandb_run_name: Optional[str] = typer.Option(None, help="Optional W&B run name exported in env.sh."),
+    force: bool = typer.Option(False, "--force", help="Allow writing into a non-empty output directory."),
+    json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON instead of a summary."),
+) -> None:
+    """Render a DART-GUI run directory for custom OSWorld rollout/training."""
+    from .osworld_dart.config import write_dart_run_config
+
+    try:
+        result = write_dart_run_config(
+            run_id=run_id,
+            task_file=task_file,
+            osworld_root=osworld_root,
+            out_dir=out,
+            dart_root=dart_root,
+            storage_root=storage_root,
+            model=model,
+            rollout_server_url=rollout_server_url,
+            max_steps=max_steps,
+            rollout_n=rollout_n,
+            max_concurrent_envs=max_concurrent_envs,
+            max_task_queue_size=max_task_queue_size,
+            screen_width=screen_width,
+            screen_height=screen_height,
+            headless=headless,
+            provider_name=provider_name,
+            os_type=os_type,
+            require_a11y_tree=require_a11y_tree,
+            write_to_mysql=write_to_mysql,
+            mlflow_tracking_uri=mlflow_tracking_uri,
+            mlflow_experiment=mlflow_experiment,
+            wandb_project=wandb_project,
+            wandb_run_name=wandb_run_name,
+            force=force,
+        )
+    except (FileExistsError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    if json_output:
+        console.print_json(data=result.as_dict())
+        return
+
+    console.print(f"rendered DART-GUI config for run {result.run_id}")
+    console.print(f"out: {result.out_dir}")
+    console.print(f"rollouter_config: {result.rollouter_config}")
+    console.print(f"env: {result.env_file}")
+    console.print(f"script: {result.trainer_script}")
+    console.print(f"manifest: {result.manifest_path}")
+
+
 @osworld_custom_app.command("smoke")
 def osworld_custom_smoke(
     targets: list[str] = typer.Argument(None, help="Task directories or task.json paths."),

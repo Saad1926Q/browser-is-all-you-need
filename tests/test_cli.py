@@ -1045,3 +1045,39 @@ def test_cli_osworld_custom_dart_prepare_exports_task(tmp_path):
     assert (out / "evaluation_examples" / "examples_custom" / "custom" / f"{task_id}.json").exists()
     assert (out / "manifest.json").exists()
 
+
+
+def test_cli_osworld_custom_dart_config_writes_run_files(tmp_path):
+    task_file = tmp_path / "data" / "evaluation_examples" / "custom_train.json"
+    osworld_root = tmp_path / "data" / "evaluation_examples" / "examples_custom"
+    task_file.parent.mkdir(parents=True)
+    osworld_root.mkdir(parents=True)
+    task_file.write_text('{"custom": ["task-1"]}\n', encoding="utf-8")
+    out = tmp_path / "run"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "osworld",
+            "custom",
+            "dart",
+            "config",
+            "--run-id",
+            "dart-test",
+            "--task-file",
+            str(task_file),
+            "--osworld-root",
+            str(osworld_root),
+            "--out",
+            str(out),
+            "--max-steps",
+            "3",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "rendered DART-GUI config for run dart-test" in result.output
+    assert (out / "rollouter_config.yaml").exists()
+    assert (out / "env.sh").exists()
+    assert (out / "run_dart_rollout.sh").exists()
+    assert (out / "manifest.json").exists()
