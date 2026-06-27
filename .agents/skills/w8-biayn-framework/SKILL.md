@@ -42,7 +42,7 @@ Allowed upstream use:
 
 Phase 1 is C++ only. Do not reintroduce BrowserGym, DOMDiff, Harbor, WebArena, MiniWoB, AndroidWorld, Go workflows, custom GPU kernel labs, or unrelated performance experiments unless the user explicitly starts a later phase.
 
-Use `uv run w8-biayn upstreams clone` for pinned upstream copies under `.cache/upstreams/`. Temporary study clones may live under `/tmp`; do not vendor upstream repos or data. Experimental sidecar frameworks such as SLIME may be pinned for exploration only when explicitly requested; they must not replace the active SkyRL/rLLM C++ training path without an explicit project-phase change. When working on the SLIME sidecar lane, prefer the repo-owned `w8-biayn slime setup` Docker-first flow instead of trying to force SLIME runtime dependencies into the main project virtualenv. For the text-only SLIME bring-up path, prefer the repo-owned DAPO-Math prep script plus `examples/slime/multi_agent/run_multi_agent_text.sh` wrapper instead of editing the upstream example directly.
+Use `uv run w8-biayn upstreams clone` for pinned upstream copies under `.cache/upstreams/`. Temporary study clones may live under `/tmp`; do not vendor upstream repos or data. Experimental sidecar frameworks such as SLIME may be pinned for exploration only when explicitly requested; they must not replace the active SkyRL/rLLM C++ training path without an explicit project-phase change. When working on the SLIME sidecar lane, prefer the repo-owned `w8-biayn slime setup` Docker-first flow instead of trying to force SLIME runtime dependencies into the main project virtualenv. For C++ SLIME experiments, build prompt/task bundles with `w8-biayn data slime build-cpp` and keep the existing C++ reward/task schema as the source of truth. For the text-only SLIME bring-up path, prefer the repo-owned DAPO-Math prep script plus `examples/slime/multi_agent/run_multi_agent_text.sh` wrapper instead of editing the upstream example directly.
 
 ## Repository Map
 
@@ -54,6 +54,7 @@ Use `uv run w8-biayn upstreams clone` for pinned upstream copies under `.cache/u
 - Coverage measurement: `src/w8_biayn/cpp_perf/coverage.py`
 - PIE parsing/task construction: `src/w8_biayn/cpp_perf/pie.py`
 - SkyRL dataset conversion: `src/w8_biayn/cpp_perf/skyrl_dataset.py`
+- SLIME C++ dataset conversion: `src/w8_biayn/cpp_perf/slime_dataset.py`
 - Eval aggregation: `src/w8_biayn/cpp_perf/eval.py`
 - Contest-style output judging: `src/w8_biayn/cpp_perf/judge.py`
 - Task schema: `src/w8_biayn/cpp_perf/schema.py`
@@ -126,6 +127,15 @@ Derived SkyRL bundles must include:
 - `sft/validation.jsonl`
 - copied task JSON under `tasks/`
 - `_w8_data_manifest.json` with schema version, sources, options, checksums, and byte sizes
+
+Derived SLIME C++ bundles are experimental side-lane artifacts and must be built through `w8-biayn data slime build-cpp`. They must include:
+
+- `grpo/train.jsonl`
+- `grpo/validation.jsonl`
+- copied task JSON under `tasks/`
+- `_w8_data_manifest.json` with schema version, sources, options, checksums, and byte sizes
+
+SLIME C++ JSONL rows must keep `prompt`, `label`, `data_source`, and `metadata.task_path`. They must use the same GRPO prompt contract as SkyRL: visible tests and `v0` are allowed; hidden tests and `v1` are not shown.
 
 Default schema version: `cpp-perf-v1`.
 

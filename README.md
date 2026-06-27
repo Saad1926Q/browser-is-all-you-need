@@ -580,15 +580,55 @@ uv run w8-biayn slime setup
 .w8-biayn/slime/run-container.sh
 ```
 
-`slime setup` refreshes the pinned upstream, writes `.w8-biayn/slime/run-container.sh`, and writes `.w8-biayn/slime/bootstrap-inside-container.sh`. The launcher now follows the upstream quick-start Docker flow end-to-end: it does `docker pull`, starts the container with this repo mounted at `/workspace/<repo-name>`, mounts `/var/run/docker.sock` for the Docker sandbox backend, and then runs the in-container bootstrap (`export PYTHONPATH=/root/Megatron-LM${PYTHONPATH:+:${PYTHONPATH}} && cd /root/slime && git pull && pip install -e . --no-deps && python train.py --help`). That `PYTHONPATH` export is required because the image contains `/root/Megatron-LM` but does not expose it by default, and `slime/train.py` imports `megatron.training`. The bootstrap script is still written separately so it can be rerun manually inside the container if needed.
+`slime setup` refreshes the pinned upstream, writes `.w8-biayn/slime/run-container.sh`, and writes `.w8-biayn/slime/bootstrap-inside-container.sh`. The launcher follows the upstream quick-start Docker flow end-to-end: it does `docker pull`, starts the container with this repo mounted at `/workspace/<repo-name>`, mounts `${HOST_MODELS_DIR:-$HOME/models}` at `/root/models`, mounts `${HOST_HF_HOME:-$HOME/.cache/huggingface}` at `/root/.cache/huggingface`, mounts `/var/run/docker.sock` plus `/tmp` for the C++ Docker sandbox backend, and then runs the in-container bootstrap (`export PYTHONPATH=/root/Megatron-LM${PYTHONPATH:+:${PYTHONPATH}} && cd /root/slime && git pull && pip install -e . --no-deps && python train.py --help`). That `PYTHONPATH` export is required because the image contains `/root/Megatron-LM` but does not expose it by default, and `slime/train.py` imports `megatron.training`. The bootstrap script is still written separately so it can be rerun manually inside the container if needed.
 
 The generic doctor checks the upstream root plus `README.md`, `train.py`, `train_async.py`, `slime/`, `examples/`, and `docs/`.
+
+### SLIME C++ GRPO Data Bundle
+
+The SLIME C++ lane is additive. It prepares C++ GRPO prompt data for future SLIME rollout/training work, while the default production C++ GRPO path remains SkyRL/rLLM until SLIME reward parity and training smoke runs pass.
+
+Build a SLIME-compatible C++ bundle from validated task JSON:
+
+```bash
+uv run w8-biayn data slime build-cpp \
+  --tasks-dir .w8-biayn/data/tasks-full \
+  --out .w8-biayn/data/slime-cpp-full \
+  --profile full-official \
+  --run-id "${RUN_ID}" \
+  --min-train-tasks 1000 \
+  --min-validation-tasks 100 \
+  --force
+```
+
+For a tiny local smoke bundle, use the same command with row limits:
+
+```bash
+uv run w8-biayn data slime build-cpp \
+  --tasks-dir .w8-biayn/data/tasks-full \
+  --out .w8-biayn/data/slime-cpp-smoke \
+  --limit-train 8 \
+  --limit-validation 4 \
+  --force
+```
+
+The bundle shape is:
+
+```text
+.w8-biayn/data/slime-cpp-*/
+  grpo/train.jsonl
+  grpo/validation.jsonl
+  tasks/**/*.json
+  _w8_data_manifest.json
+```
+
+Each JSONL row has `prompt`, `label`, `data_source`, and `metadata.task_path`. The prompt is the same C++ optimization prompt used for SkyRL GRPO: visible tests and slower `v0` are shown, while hidden tests and `v1` are not shown. The copied task JSON is kept because the future SLIME reward adapter will load `metadata.task_path` and call the existing C++ reward harness.
 
 ### SLIME Moonlight MoE Smoke
 
 For the lightest MoE smoke, start with the repo-owned Moonlight wrapper under `examples/slime/moonlight_moe_smoke/`. It uses a Moonlight-16B-A3B Instruct checkpoint, a four-row local math JSONL, one rollout, one sample per prompt, short responses, and the real colocated Megatron + SGLang training path. It does not require E2B, browser sandboxes, DAPO-Math downloads, or W&B by default.
 
-Prerequisites are intentionally narrow: a 4x A100 80 GB node, the pinned SLIME sidecar, `/root/Megatron-LM`, a local Moonlight HF checkpoint, and its converted Megatron torch_dist checkpoint. The launcher defaults are `/root/Moonlight-16B-A3B-Instruct` and `/root/Moonlight-16B-A3B-Instruct_torch_dist`; override with `SLIME_HF_CHECKPOINT` and `SLIME_REF_LOAD_DIR`. The current Moonlight smoke also depends on the generated `.w8-biayn/slime/run-container.sh` including `-v "${HOST_MODELS_DIR:-$HOME/models}":/root/models \`; add that mount before starting the GPU container so the model files are visible inside the SLIME runtime.
+Prerequisites are intentionally narrow: a 4x A100 80 GB node, the pinned SLIME sidecar, `/root/Megatron-LM`, a local Moonlight HF checkpoint, and its converted Megatron torch_dist checkpoint. The launcher defaults are `/root/Moonlight-16B-A3B-Instruct` and `/root/Moonlight-16B-A3B-Instruct_torch_dist`; override with `SLIME_HF_CHECKPOINT` and `SLIME_REF_LOAD_DIR`. The generated `.w8-biayn/slime/run-container.sh` mounts `${HOST_MODELS_DIR:-$HOME/models}` to `/root/models`, so place model files there or override `HOST_MODELS_DIR` before starting the container.
 
 Start the SLIME container:
 
@@ -682,6 +722,7 @@ src/w8_biayn/cpp_perf/data.py                downloads, full PIE prep, manifests
 src/w8_biayn/cpp_perf/coverage.py            gcov coverage measurement
 src/w8_biayn/cpp_perf/pie.py                 PIE parsing and task construction
 src/w8_biayn/cpp_perf/skyrl_dataset.py       SkyRL GRPO/SFT dataset builder
+src/w8_biayn/cpp_perf/slime_dataset.py       SLIME C++ GRPO JSONL dataset builder
 src/w8_biayn/cpp_perf/eval.py                eval aggregation
 src/w8_biayn/cpp_perf/judge.py               contest-style stdout comparison
 src/w8_biayn/cpp_perf/sandbox.py             Docker compile/test/runtime harness
