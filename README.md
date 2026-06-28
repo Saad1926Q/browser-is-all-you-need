@@ -622,7 +622,7 @@ The bundle shape is:
   _w8_data_manifest.json
 ```
 
-Each JSONL row has `prompt`, `label`, `data_source`, and `metadata.task_path`. The prompt is the same C++ optimization prompt used for SkyRL GRPO: visible tests and slower `v0` are shown, while hidden tests and `v1` are not shown. The copied task JSON is kept because the future SLIME reward adapter will load `metadata.task_path` and call the existing C++ reward harness.
+Each JSONL row has `prompt`, `label`, `data_source`, and `metadata.task_path`. The prompt is the same C++ optimization prompt used for SkyRL GRPO: visible tests and slower `v0` are shown, while hidden tests and `v1` are not shown. The copied task JSON is kept because the repo-owned SLIME reward bridge in `src/w8_biayn/slime_integration/cpp_reward.py` resolves `metadata.task_path`, loads the copied task JSON, and delegates scoring to the existing `cpp_perf.reward.compute_reward` harness.
 
 ### SLIME Moonlight MoE Smoke
 
