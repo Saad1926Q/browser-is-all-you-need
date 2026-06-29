@@ -626,6 +626,17 @@ Each JSONL row has `prompt`, `label`, `data_source`, and `metadata.task_path`. T
 
 SLIME's reward hook for this lane is `--custom-rm-path`. The normal per-sample signature is `async def reward_func(args, sample, **kwargs) -> float`; when `--group-rm` is enabled, the same path must accept `list[Sample]` and return `list[float]`. SLIME's dataset loader preserves our row shape with `--input-key prompt --label-key label --metadata-key metadata`, producing `Sample.prompt`, `Sample.label`, and `Sample.metadata`. That means the C++ reward entrypoint should read `sample.metadata["task_path"]`, score `sample.response` through `score_slime_cpp_row(...)`, and return the scalar reward. Start with per-sample reward mode for the first C++ smoke so Docker compile/test failures stay isolated.
 
+The C++ SLIME foundation currently includes the sidecar setup, C++ JSONL bundle builder, reward bridge, and reward metric aggregation. `src/w8_biayn/slime_integration/cpp_metrics.py` aggregates already-scored rollout rows into stable `reward/cpp/*` metrics: mean, max, min, std, format-valid rate, all-tests-pass rate, compile-error rate, runtime-speedup mean, and tests-passed mean. It does not recompute rewards.
+
+The remaining C++ SLIME work is to add the actual runtime path around these pieces:
+
+- tracking bridge for W&B/MLflow using the same `reward/cpp/*` names;
+- held-out eval runner over `grpo/validation.jsonl` with records and summary artifacts under `.w8-biayn/slime/cpp-grpo/runs/<run-id>/eval/`;
+- `examples/slime/cpp_grpo/cpp_rollout.py` exposing the `--custom-rm-path` reward function;
+- generic `examples/slime/cpp_grpo/run_cpp_grpo.sh` launcher;
+- Moonlight 16B A3B preset for a tiny 4xA100 smoke;
+- reward parity gate proving the SLIME adapter and current C++ reward path match for the same task/output.
+
 ### SLIME Moonlight MoE Smoke
 
 For the lightest MoE smoke, start with the repo-owned Moonlight wrapper under `examples/slime/moonlight_moe_smoke/`. It uses a Moonlight-16B-A3B Instruct checkpoint, a four-row local math JSONL, one rollout, one sample per prompt, short responses, and the real colocated Megatron + SGLang training path. It does not require E2B, browser sandboxes, DAPO-Math downloads, or W&B by default.

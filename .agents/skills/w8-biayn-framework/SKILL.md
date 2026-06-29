@@ -59,7 +59,7 @@ Use `uv run w8-biayn upstreams clone` for pinned upstream copies under `.cache/u
 - Contest-style output judging: `src/w8_biayn/cpp_perf/judge.py`
 - Task schema: `src/w8_biayn/cpp_perf/schema.py`
 - Sandbox/reward: `src/w8_biayn/cpp_perf/sandbox.py`, `src/w8_biayn/cpp_perf/reward.py`
-- SLIME C++ reward bridge: `src/w8_biayn/slime_integration/cpp_reward.py`
+- SLIME C++ reward bridge and metrics: `src/w8_biayn/slime_integration/cpp_reward.py`, `src/w8_biayn/slime_integration/cpp_metrics.py`
 - SkyRL env and entrypoint glue: `src/w8_biayn/integrations/cpp_perf_env.py`, `src/w8_biayn/integrations/skyrl_cpp_perf_main.py`
 - SkyRL policy checkpoint HF export recovery: `src/w8_biayn/integrations/skyrl_sft_export_checkpoint_main.py`
 - SkyRL checkpoint download compatibility patch: `src/w8_biayn/integrations/skyrl_io_patch.py`
@@ -138,6 +138,7 @@ Derived SLIME C++ bundles are experimental side-lane artifacts and must be built
 
 SLIME C++ JSONL rows must keep `prompt`, `label`, `data_source`, and `metadata.task_path`. They must use the same GRPO prompt contract as SkyRL: visible tests and `v0` are allowed; hidden tests and `v1` are not shown. The repo-owned SLIME reward bridge resolves `metadata.task_path` against the local bundle root and then calls the existing `cpp_perf.reward.compute_reward` path so reward policy stays aligned across SkyRL and SLIME experiments.
 SLIME's native reward hook is `--custom-rm-path`; use per-sample `async def reward_func(args, sample, **kwargs) -> float` first, with `Sample.metadata` carrying `metadata.task_path` from the JSONL loader. Only enable `--group-rm` after a per-sample C++ smoke passes, because grouped rewards require the same hook to accept `list[Sample]` and return `list[float]`.
+Aggregate scored rows with `aggregate_cpp_reward_metrics(...)` before logging or saving summaries; the helper emits stable `reward/cpp/*` keys and must not recompute reward. The remaining SLIME C++ runtime work is the W&B/MLflow tracking bridge, held-out eval artifacts, `examples/slime/cpp_grpo/cpp_rollout.py`, generic launcher, Moonlight 16B A3B smoke preset, and a parity gate against the established C++ reward path.
 
 Default schema version: `cpp-perf-v1`.
 
