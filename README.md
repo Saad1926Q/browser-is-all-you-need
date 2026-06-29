@@ -624,6 +624,8 @@ The bundle shape is:
 
 Each JSONL row has `prompt`, `label`, `data_source`, and `metadata.task_path`. The prompt is the same C++ optimization prompt used for SkyRL GRPO: visible tests and slower `v0` are shown, while hidden tests and `v1` are not shown. The copied task JSON is kept because the repo-owned SLIME reward bridge in `src/w8_biayn/slime_integration/cpp_reward.py` resolves `metadata.task_path`, loads the copied task JSON, and delegates scoring to the existing `cpp_perf.reward.compute_reward` harness.
 
+SLIME's reward hook for this lane is `--custom-rm-path`. The normal per-sample signature is `async def reward_func(args, sample, **kwargs) -> float`; when `--group-rm` is enabled, the same path must accept `list[Sample]` and return `list[float]`. SLIME's dataset loader preserves our row shape with `--input-key prompt --label-key label --metadata-key metadata`, producing `Sample.prompt`, `Sample.label`, and `Sample.metadata`. That means the C++ reward entrypoint should read `sample.metadata["task_path"]`, score `sample.response` through `score_slime_cpp_row(...)`, and return the scalar reward. Start with per-sample reward mode for the first C++ smoke so Docker compile/test failures stay isolated.
+
 ### SLIME Moonlight MoE Smoke
 
 For the lightest MoE smoke, start with the repo-owned Moonlight wrapper under `examples/slime/moonlight_moe_smoke/`. It uses a Moonlight-16B-A3B Instruct checkpoint, a four-row local math JSONL, one rollout, one sample per prompt, short responses, and the real colocated Megatron + SGLang training path. It does not require E2B, browser sandboxes, DAPO-Math downloads, or W&B by default.

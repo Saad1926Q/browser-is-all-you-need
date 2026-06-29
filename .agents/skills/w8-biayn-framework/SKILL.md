@@ -137,6 +137,7 @@ Derived SLIME C++ bundles are experimental side-lane artifacts and must be built
 - `_w8_data_manifest.json` with schema version, sources, options, checksums, and byte sizes
 
 SLIME C++ JSONL rows must keep `prompt`, `label`, `data_source`, and `metadata.task_path`. They must use the same GRPO prompt contract as SkyRL: visible tests and `v0` are allowed; hidden tests and `v1` are not shown. The repo-owned SLIME reward bridge resolves `metadata.task_path` against the local bundle root and then calls the existing `cpp_perf.reward.compute_reward` path so reward policy stays aligned across SkyRL and SLIME experiments.
+SLIME's native reward hook is `--custom-rm-path`; use per-sample `async def reward_func(args, sample, **kwargs) -> float` first, with `Sample.metadata` carrying `metadata.task_path` from the JSONL loader. Only enable `--group-rm` after a per-sample C++ smoke passes, because grouped rewards require the same hook to accept `list[Sample]` and return `list[float]`.
 
 Default schema version: `cpp-perf-v1`.
 
